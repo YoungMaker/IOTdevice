@@ -27,13 +27,18 @@ class RfidReader:
 
     def tagRead(self):
         #wait for new serial information
-        self.port.flush()
+        self.port.flush() #buffer is not getting flushed
+        time.sleep(0.01)
         while self.port.in_waiting < 4:
             pass
         rcv = self.port.read(4)
-        if rcv == "AW\r\n":
+        print repr(rcv) + '\n'
+        if rcv == "AW":
             print self.port.readline() + '\n'
             return True
+        elif not ( rcv == "AN\r\n"):
+            print "HEARTBEAT LOST"
+            return False
         else:
             return False
 

@@ -20,7 +20,9 @@ void setup() {
 
 void loop() {
   if(nfc.tagPresent()){
-    Serial.println("AW");
+    NfcTag tag = nfc.read();
+    Serial.print("AW");
+    Serial.println(tag.getUidString());
   }
   else {
     Serial.println("AN");
