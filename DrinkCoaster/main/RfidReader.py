@@ -23,23 +23,29 @@ class RfidReader:
             time.sleep(0.01)
         #server is ready
         self.port.write("AT") #send ready to IOT device
-        print("CLIENT READY\n")
-
+	if self.port.in_waiting >= 2:
+            print self.port.read(2) + " HS\n"
+            #if self.port.read(4) == "AT":
+             #   print "DEVICE DID NOT RCV AT"
+        time.sleep(.5)
+        self.port.reset_input_buffer()
+        
+        
+		
+        
     def tagRead(self):
-        #wait for new serial information
-        self.port.flush() #buffer is not getting flushed
-        time.sleep(0.01)
-        while self.port.in_waiting < 4:
-            pass
-        rcv = self.port.read(4)
-        print repr(rcv) + '\n'
-        if rcv == "AW":
-            print self.port.readline() + '\n'
-            return True
-        elif not ( rcv == "AN\r\n"):
-            print "HEARTBEAT LOST"
-            return False
+        if self.port.in_waiting >= 4:
+            #a new serial message has come through
+            pre = self.port.read(2) #read the preamble
+            rest =  self.port.readline() + '\n' #read the rest of the message
+            if pre == "AW": #if the preamble is a tag read
+                rest = rest.replace("\r","") #remove whitespace chars
+                rest = rest.replace("\n","")
+                rest = rest.replace(" ", "")
+                return rest #rest contains tag UID string, minus any terminating chars
+            else:
+                #something other than a tag preamble was received. Ignore it
+                #print "RECV: " + repr(pre + rest) + "\n"
+                return False
         else:
             return False
-
-
