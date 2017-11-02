@@ -48,6 +48,8 @@ void handshake() {
       inByte = Serial.read();
       if(inByte == 'A' && Serial.read() == 'T') {
         contact = true;
+        delay(100);
+        Serial.println("AN");
       }
     }
     delay(300);

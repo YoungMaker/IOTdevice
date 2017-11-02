@@ -6,31 +6,50 @@ class RfidReader:
 
     def __init__(self, COM, dataRate=9600):
         #todo, open serial port, handshake with client.
+
         self.port = serial.Serial(COM, dataRate)
-        rdy = False
-        print "DEVICE NOT READY, WAITING FOR AT"
-        #waits for input on serial port such that input is AT
-        while not rdy:
-            while self.port.in_waiting < 4:
+        self.handshake(self.port)
+        
+
+    def handshake(self, port):
+        servRdy = False
+        devRdy = False
+        print "SERV NOT READY, WAITING FOR AT"
+        # waits for input on serial port such that input is AT
+        while not servRdy:
+            while port.in_waiting < 4:
                 pass
-            rcv = self.port.readline()
+            rcv = port.readline()
             if rcv == "AT\r\n":
-                print "SERVER READY, AT RCV\n"
-                rdy = True
-                break
+                print "SERV READY, AT RCV\n"
+                servRdy = True
             else:
-                print "AT INCORRECT, RCV " + repr(rcv) + "\n"
-            time.sleep(0.01)
-        #server is ready
+                # print "AT INCORRECT, RCV  " + repr(rcv) + "\n"
+                pass
+            time.sleep(0.1)
+            # server is ready
         self.port.write("AT") #send ready to IOT device
-	if self.port.in_waiting >= 2:
-            print self.port.read(2) + " HS\n"
-            #if self.port.read(4) == "AT":
-             #   print "DEVICE DID NOT RCV AT"
+        time.sleep(0.1)
+        port.reset_output_buffer()
+        port.reset_input_buffer()
+        time.sleep(0.3)
+        while not devRdy:
+            if port.in_waiting >= 2:
+                port.readline() #ignore first line, carry over from last AT sent
+                recv = port.read(2)
+                if recv == "AT":
+                    print "DEVICE DID NOT RCV AT, SERV STILL RDY"
+                    self.port.write("AT")  # send ready to IOT device again
+                elif recv == "AN":
+                    print "DEVICE RDY, RCV AT"
+                    devRdy = True
+                else:
+                    print "DID NOT RECV AT, DEVICE UNREADY, RESTART HANDSHAKE"
+                    self.handshake(port)
+                time.sleep(0.1)
+
         time.sleep(.5)
         self.port.reset_input_buffer()
-        
-        
 		
         
     def tagRead(self):
@@ -43,9 +62,12 @@ class RfidReader:
                 rest = rest.replace("\n","")
                 rest = rest.replace(" ", "")
                 return rest #rest contains tag UID string, minus any terminating chars
+            elif pre == "AT":
+                print "DEVICE RESET, RESTART HANDSHAKE"
+                self.handshake(self.port)
             else:
                 #something other than a tag preamble was received. Ignore it
                 #print "RECV: " + repr(pre + rest) + "\n"
-                return False
+                return ""
         else:
-            return False
+            return ""
