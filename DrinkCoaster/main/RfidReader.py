@@ -1,5 +1,10 @@
 import serial, time
 
+TAG_TYPE_USER = 0
+TAG_TYPE_DRINK = 1
+TAG_TYPE_NONE = -1
+TAG_TYPE_ADMIN = 2
+
 class RfidReader:
 
     port = None
@@ -56,7 +61,7 @@ class RfidReader:
         if self.port.in_waiting >= 4:
             #a new serial message has come through
             pre = self.port.read(2) #read the preamble
-            rest =  self.port.readline() + '\n' #read the rest of the message
+            rest =  self.port.readline() #read the rest of the message
             if pre == "AW": #if the preamble is a tag read
                 rest = rest.replace("\r","") #remove whitespace chars
                 rest = rest.replace("\n","")
@@ -71,3 +76,60 @@ class RfidReader:
                 return ""
         else:
             return ""
+
+    def enterUpdateMode(self):
+        self.port.write("ARU")
+        time.sleep(0.1)
+        devRdy = False
+        while not devRdy:
+            if self.port.in_waiting >= 2:
+                pre = self.port.read(2)  # read the preamble
+                rest = self.port.readline()  # read the rest of the message
+
+                rest = rest.replace("\r","") #remove whitespace chars
+                rest = rest.replace("\n","")
+                rest = rest.replace(" ", "")
+                if pre == "AT":
+                    print "DEVICE RESET, RESTART HANDSHAKE"
+                    self.handshake(self.port)
+                elif pre == "AR":
+                    if rest == "U":
+                        print "DEVICE IN UPDATE MODE, RCV ACK"
+                        devRdy = True
+                    else:
+                        print "DEVICE WRONG MODE, RESEND COMMAND"
+                else:
+                  #something other than a tag preamble was received. Ignore it
+                  pass
+            self.port.write("ARU") #retry
+            time.sleep(0.1)
+
+
+    def leaveUpdateMode(self):
+        self.port.write("ARX")
+        time.sleep(0.1)
+        devRdy = False
+        while not devRdy:
+            if self.port.in_waiting >= 2:
+                pre = self.port.read(2)  # read the preamble
+                rest = self.port.readline()  # read the rest of the message
+
+                rest = rest.replace("\r", "")  # remove whitespace chars
+                rest = rest.replace("\n", "")
+                rest = rest.replace(" ", "")
+                if pre == "AT":
+                    print "RECIVE AT, DEVICE RESET, RESTART HANDSHAKE"
+                    self.handshake(self.port)
+                elif pre == "AR":
+                    if rest == "X":
+                        print "DEVICE IN READ TAG MODE, RCV ACK"
+                        devRdy = True
+                    else:
+                        print "DEVICE WRONG MODE, RESEND COMMAND"
+                else:
+                    # something other than a tag preamble was received. Ignore it
+                    pass
+            self.port.write("ARX")  # retry
+            time.sleep(0.1)
+
+
