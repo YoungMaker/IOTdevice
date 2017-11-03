@@ -42,6 +42,7 @@ void loop() {
       else if(recvCode[2] == 'X'){
         mode = MODE_READ;
         Serial.println("ARX");
+        lastUid = ""; //reset duplicate prevention.
       }
       else {} //unexpected 3 input string received, do nothing 
     }

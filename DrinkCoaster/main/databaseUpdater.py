@@ -7,7 +7,7 @@ def updateMode(tagDatabase, rfidReader):
         read = ''
         while not read:
             read = rfidReader.tagRead()
-            time.sleep(.5)
+            time.sleep(.3)
 
         print "TAG READ: " + repr(read)
         tagType = tagDatabase.getTagType(read)
@@ -19,7 +19,7 @@ def updateMode(tagDatabase, rfidReader):
                 #todo: ask what kind of tag it should be and add it accordingly
                 print "todo: ask what kind of tag it should be and add it accordingly \n"
                 pass
-        elif tagType == RfidReader.TAG_TYPE_USER:
+        elif tagType == RfidReader.TAG_TYPE_USER or tagType == RfidReader.TAG_TYPE_ADMIN:
             tagDatabase.printUserInfo(read)
             if askYesNo("Tag " + read + " user is already in the database, would you like to update it?\n" ):
                 #todo: update user tag using questions
@@ -34,6 +34,7 @@ def updateMode(tagDatabase, rfidReader):
 
         print "Leaving update mode\n"
         rfidReader.leaveUpdateMode() #leave update mode so we can again scan tags freely
+    print "Ok, returning to read mode\n"
 
 def addUserTag(tagDatabase, rfidReader):
     pass

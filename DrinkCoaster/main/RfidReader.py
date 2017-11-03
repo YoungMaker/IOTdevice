@@ -102,7 +102,7 @@ class RfidReader:
                   #something other than a tag preamble was received. Ignore it
                   pass
             self.port.write("ARU") #retry
-            time.sleep(0.1)
+            time.sleep(0.2)
 
 
     def leaveUpdateMode(self):
@@ -130,6 +130,6 @@ class RfidReader:
                     # something other than a tag preamble was received. Ignore it
                     pass
             self.port.write("ARX")  # retry
-            time.sleep(0.1)
+            time.sleep(0.2)
 
 
