@@ -1,7 +1,7 @@
 import RfidReader, time
 
 if __name__ == '__main__':
-    #todo: open serial port and communicate with arduino
+    #todo: open database connection and interface
     reader = RfidReader.RfidReader("COM4")
 
     read = ''
