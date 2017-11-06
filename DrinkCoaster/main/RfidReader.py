@@ -133,3 +133,13 @@ class RfidReader:
             time.sleep(0.2)
 
 
+    def waitForTagRead(self, delay=0.3, timeout=1000):
+        read = ''
+        count = 0
+        while (not read) and (count <= timeout):
+            read = self.tagRead()
+            time.sleep(delay)
+            count += 1
+
+        return read
+
