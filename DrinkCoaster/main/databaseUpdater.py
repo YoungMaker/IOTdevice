@@ -1,8 +1,9 @@
 import time, RfidReader
-#from tagdb import TagDatabase
+from tagdb import TagDatabase
 from dateutil.parser import parse
 
 INPUT_ERROR = -2
+
 
 def updateMode(tagDatabase, rfidReader):
     if askYesNo("Would you like to enter update mode\n"):
@@ -169,7 +170,22 @@ def addDrinkTag(tagId, tagDatabase, rfidReader):
 
 
 def addAdminTag(tagId, tagDatabase, rfidReader):
+    rfidReader.leaveUpdateMode()  # leave update mode so we can again scan tags freely
+    print "please present a valid admin user card\n"
+    read = rfidReader.waitForTagRead(delay=0.03, timeout=200)
+    tagType = tagDatabase.getTagType()
+    if tagType == RfidReader.TAG_TYPE_ADMIN:
+        print "admin card accpeted. Adding new admin user. "
+        if addUserTag(tagId, tagDatabase, rfidReader) > 0:
+            if tagDatabase.addAdminPrivleges(tagId) > 0:
+                print "Admin privileges added successfully"
+                return TagDatabase.DB_COMPLETE
+    else:
+        print "non-admin card presented, operation canceled\n"
+
+    rfidReader.enterUpdateMode()  # reenter update mode
     return INPUT_ERROR
+
 
 
 def askYesNo(msg):

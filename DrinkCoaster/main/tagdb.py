@@ -6,6 +6,8 @@ DB_ERROR = -1
 class TagDatabase:
 
     db = None
+    DB_COMPLETE = 0
+    DB_ERROR = -1
 
     def __init__(self):
         global db
@@ -139,9 +141,24 @@ class TagDatabase:
 
         return DB_COMPLETE
 
+    def addAdminPrivleges(self, tagId):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor.execute("UPDATE tags SET type = ? WHERE tag = ? ", (RfidReader.TAG_TYPE_ADMIN, tagId))
+            db.commit()
+        except sqlite3.IntegrityError as e:
+            print "Database Integrity error: " + str(e) +"\n"
+            db.rollback()
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            # Roll back any change if something goes wrong
+            print "Database error: " + str(e) + "\n"
+            db.rollback()
+            return DB_ERROR
 
     def disconnect(self):
         global db
         if db is not None:
-            print "database closed\n"
+            print "Database closed\n"
             db.close()
