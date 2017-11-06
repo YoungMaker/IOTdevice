@@ -1,5 +1,6 @@
 import time, RfidReader
-from tagdb import TagDatabase
+#from tagdb import TagDatabase
+from dateutil.parser import parse
 
 INPUT_ERROR = -2
 
@@ -28,6 +29,7 @@ def updateMode(tagDatabase, rfidReader):
                 elif tagType == RfidReader.TAG_TYPE_ADMIN:
                     success = addAdminTag(read, tagDatabase, rfidReader)
 
+                print success
                 if success >= 0:
                     print "tag " + read + " successfully added to database\n"
 
@@ -74,6 +76,52 @@ def askTagType():
         return INPUT_ERROR
 
 def addUserTag(tagId, tagDatabase, rfidReader):
+    name = raw_input("Enter the name of the user:\n")
+    print "Ok, the user's name is " + name +"\n"
+
+    dob = raw_input("Enter the users DOB in dd/mm/yyyy:\n")
+    while True:
+        try:
+            dob = parse(dob, dayfirst=True)
+        except ValueError:
+            dob = raw_input("Incorrect date format. Please Enter the users DOB in dd/mm/yyyy:\n")
+        else :
+            break
+
+    print "Ok, the users's date of birthday is  " + str(dob) +"\n"
+
+    weight = raw_input("Enter the weight of the user, in Kg. Quantity < 0 will quit\n")
+    while True:
+        try:
+            weight = int(weight)
+        except ValueError:
+            weight = raw_input("Please enter an integer value, qty < 0 to quit:\n")
+        else:
+            #user entered integer
+            break
+
+    if weight < 0:
+        print "Operation cancelled\n"
+        return INPUT_ERROR
+
+    dose = raw_input("Enter the quantity of the drug, in milliliters that the user has currently consumed. Quantity < 0 will assume 0\n")
+    while True:
+        try:
+            dose = int(dose)
+        except ValueError:
+            dose = raw_input("Please enter an integer value\n")
+        else:
+            # user entered integer
+            break
+
+    if dose < 0: dose = 0
+
+    print "User \"" + name + "\", dob: " + str(dob) + ", weighing " + str(weight) + "kg, has consumed " + str(dose) + " mg/ml \n"
+
+    if askYesNo("Is this correct?\n"):
+       return tagDatabase.addUserTag(tagId, name, dob, weight, dose)
+
+    print "Operation cancelled\n"
     return INPUT_ERROR
 
 def addDrinkTag(tagId, tagDatabase, rfidReader):

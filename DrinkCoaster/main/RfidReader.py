@@ -118,7 +118,7 @@ class RfidReader:
                 rest = rest.replace("\n", "")
                 rest = rest.replace(" ", "")
                 if pre == "AT":
-                    print "RECIVE AT, DEVICE RESET, RESTART HANDSHAKE"
+                    print "RECEIVE AT, DEVICE RESET, RESTART HANDSHAKE"
                     self.handshake(self.port)
                 elif pre == "AR":
                     if rest == "X":
@@ -142,4 +142,8 @@ class RfidReader:
             count += 1
 
         return read
+
+    def disconnect(self):
+        self.port.write("AT")
+        self.port.close()
 

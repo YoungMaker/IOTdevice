@@ -65,6 +65,25 @@ class TagDatabase:
 
         return DB_COMPLETE
 
+    def insertIntoTagsTable(self, tagId, type): #DO Not use, rollbacks do not work if subsequent query fails
+        global db
+        cursor = db.cursor()
+        try: #note that a tag MUST be inserted into the tags table before the drinks table
+            cursor.execute("INSERT INTO tags (tag, type) VALUES(?,?)", (tagId, RfidReader.TAG_TYPE_DRINK))
+            db.commit()
+        except sqlite3.IntegrityError:
+            print "Exact tag is already in database\n"
+            db.rollback()
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            # Roll back any change if something goes wrong
+            print "Database error: " +  str(e) + "\n"
+            db.rollback()
+            return DB_ERROR
+
+        return DB_COMPLETE
+
+
     def addDrinkTag(self, tagId, name, drug, qty, dose):
         global db
         cursor = db.cursor()
@@ -75,7 +94,7 @@ class TagDatabase:
             print "Incorrectly formatted insert into drinks table. Qty and Dose should be integers"
             return DB_ERROR
 
-        try:
+        try: #note that a tag MUST be inserted into the tags table before the drinks table
             cursor.execute("INSERT INTO tags (tag, type) VALUES(?,?)", (tagId, RfidReader.TAG_TYPE_DRINK))
             cursor.execute("INSERT INTO drinks(tag, name, drug, qty, dose) VALUES(?,?,?,?,?)", (tagId, name, drug, qty, dose))
 
@@ -91,6 +110,35 @@ class TagDatabase:
             return DB_ERROR
 
         return DB_COMPLETE
+
+
+    def addUserTag(self, tagId, name, dob, weight, dose):
+        global db
+        cursor = db.cursor()
+        try:
+            dose = int(dose)
+            weight = int(weight)
+        except ValueError:
+            print "Incorrectly formatted insert into users table. Weight and dose should be integers"
+            return DB_ERROR
+
+        try:  # note that a tag MUST be inserted into the tags table before the drinks table
+            cursor.execute("INSERT INTO tags (tag, type) VALUES(?,?)", (tagId, RfidReader.TAG_TYPE_USER))
+            cursor.execute("INSERT INTO users(tag, name, dob, weight, dose) VALUES(?,?,?,?,?)",
+                               (tagId, name, dob, weight, dose))
+            db.commit()
+        except sqlite3.IntegrityError:
+            print "Exact user is already in database\n"
+            db.rollback()
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            # Roll back any change if something goes wrong
+            print "Database error: " + str(e) + "\n"
+            db.rollback()
+            return DB_ERROR
+
+        return DB_COMPLETE
+
 
     def disconnect(self):
         global db

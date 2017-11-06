@@ -46,6 +46,17 @@ void loop() {
       }
       else {} //unexpected 3 input string received, do nothing 
     }
+    else if(recvCode[0] == 'A' && recvCode[1] == 'T') {
+      mode = MODE_HANDSHAKE;
+      digitalWrite(LED, LOW);
+      delay(200);
+      recvCode[0] = 0;
+      recvCode[1] = 0;
+      recvCode[2] = 0;
+      Serial.flush();
+      handshake();
+      
+    }
     recvCode[0] = 0;
     recvCode[1] = 0;
     recvCode[2] = 0;
@@ -84,7 +95,6 @@ void loop() {
 
 
 void handshake() {
-  byte inByte = 0;
   while(mode == MODE_HANDSHAKE) {
     Serial.println("AT");
     while(Serial.available() > 0) {
