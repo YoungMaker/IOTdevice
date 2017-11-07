@@ -46,7 +46,7 @@ class TagDatabase:
         return DB_COMPLETE
 
 
-    def printDrinkInfo(self, tagId): # only execute this with a user tag
+    def printDrinkInfo(self, tagId): # only execute this with a drink tag
         global db
         cursor = db.cursor()
         try:
@@ -85,6 +85,41 @@ class TagDatabase:
 
         return DB_COMPLETE
 
+    def removeUser(self, tagId):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor.execute("DELETE FROM users WHERE tag = ?", (tagId,))
+            cursor.execute("DELETE FROM tags WHERE tag = ?", (tagId,))
+            db.commit()
+        except sqlite3.IntegrityError as e:
+            print "Database Integrity error: " + str(e) +"\n"
+            db.rollback()
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            # Roll back any change if something goes wrong
+            print "Database error: " + str(e) + "\n"
+            db.rollback()
+            return DB_ERROR
+        return DB_COMPLETE
+
+    def removeDrink(self, tagId):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor.execute("DELETE FROM drinks WHERE tag = ?", (tagId,))
+            cursor.execute("DELETE FROM tags WHERE tag = ?", (tagId,))
+            db.commit()
+        except sqlite3.IntegrityError as e:
+            print "Database Integrity error: " + str(e) +"\n"
+            db.rollback()
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            # Roll back any change if something goes wrong
+            print "Database error: " + str(e) + "\n"
+            db.rollback()
+            return DB_ERROR
+        return DB_COMPLETE
 
     def addDrinkTag(self, tagId, name, drug, qty, dose):
         global db
@@ -156,6 +191,7 @@ class TagDatabase:
             print "Database error: " + str(e) + "\n"
             db.rollback()
             return DB_ERROR
+        return DB_COMPLETE
 
     def disconnect(self):
         global db

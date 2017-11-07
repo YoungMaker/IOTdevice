@@ -36,20 +36,50 @@ def updateMode(tagDatabase, rfidReader):
 
         elif tagType == RfidReader.TAG_TYPE_USER or tagType == RfidReader.TAG_TYPE_ADMIN:
             tagDatabase.printUserInfo(read)
-            if askYesNo("Tag " + read + " user is already in the database, would you like to update it?\n" ):
+
+            if askYesNo("Tag " + read + " user is already in the database, would you like to remove it?\n" ):
+                if removeTag(read, RfidReader.TAG_TYPE_USER, tagDatabase, rfidReader) > 0:
+                    print "Tag " + read + " successfully removed\n"
+
+            elif askYesNo("Tag " + read + " user is already in the database, would you like to update it it?\n" ):
                 #todo: update user tag using questions
                 print "todo: update user tag using questions \n"
-                pass
+
         elif tagType == RfidReader.TAG_TYPE_DRINK:
-            tagDatabase.printDrinkInfo()
-            if askYesNo("Tag " + read + " drink is already in the database, would you like to update it?\n" ):
+            tagDatabase.printDrinkInfo(read)
+
+            if askYesNo("Tag " + read + " drink is already in the database, would you like to remove it?\n" ):
+                if removeTag(read, RfidReader.TAG_TYPE_DRINK, tagDatabase, rfidReader) > 0:
+                    print "Tag " +read + " successfully removed\n"
+
+            elif askYesNo("Tag " + read + " drink is already in the database, would you like to update it?\n" ):
                 #todo: update drink tag using questions
                 print "todo: update drink tag using questions \n"
-                pass
+
 
         print "Leaving update mode\n"
         rfidReader.leaveUpdateMode() #leave update mode so we can again scan tags freely
     print "Ok, returning to read mode\n"
+
+def removeTag(tagId,tagType, tagDatabase, rfidReader):
+    rfidReader.leaveUpdateMode() #unlock scanner
+    print "Please present the tag you want to remove again"
+    read = rfidReader.waitForTagRead(delay=0.3, timeout=200)
+
+    if read != tagId:
+        print "Correct tag was not scanned. Operation canceled \n"
+        return INPUT_ERROR
+
+    if tagType == RfidReader.TAG_TYPE_DRINK:
+        print "OK, removing drink "
+        tagDatabase.printDrinkInfo(tagId)
+        return tagDatabase.removeDrink(tagId)
+    elif tagType == RfidReader.TAG_TYPE_USER:
+        print "OK, removing user "
+        tagDatabase.printUserInfo(tagId)
+        return tagDatabase.removeUser(tagId)
+
+
 
 def askTagType():
     inpt = raw_input("What kind of tag should this be? 0 for user, 1 for drink, 2 for admin:\n")
@@ -173,12 +203,12 @@ def addAdminTag(tagId, tagDatabase, rfidReader):
     rfidReader.leaveUpdateMode()  # leave update mode so we can again scan tags freely
     print "please present a valid admin user card\n"
     read = rfidReader.waitForTagRead(delay=0.03, timeout=200)
-    tagType = tagDatabase.getTagType()
+    tagType = tagDatabase.getTagType(read)
     if tagType == RfidReader.TAG_TYPE_ADMIN:
-        print "admin card accpeted. Adding new admin user. "
+        print "admin card accepted. Adding new admin user. "
         if addUserTag(tagId, tagDatabase, rfidReader) > 0:
             if tagDatabase.addAdminPrivleges(tagId) > 0:
-                print "Admin privileges added successfully"
+                print "Admin privileges added successfully\n"
                 return TagDatabase.DB_COMPLETE
     else:
         print "non-admin card presented, operation canceled\n"
