@@ -50,6 +50,7 @@ class RfidReader:
                     devRdy = True
                 else:
                     print "DID NOT RECV AT, DEVICE UNREADY, RESTART HANDSHAKE"
+                    self.port.write("AT") #resets the device to handshake mode if not already in it
                     self.handshake(port)
                 time.sleep(0.1)
 
@@ -69,6 +70,7 @@ class RfidReader:
                 return rest #rest contains tag UID string, minus any terminating chars
             elif pre == "AT":
                 print "DEVICE RESET, RESTART HANDSHAKE"
+                self.port.write("AT") #resets the device to handshake mode if not already in it
                 self.handshake(self.port)
             else:
                 #something other than a tag preamble was received. Ignore it
@@ -91,6 +93,7 @@ class RfidReader:
                 rest = rest.replace(" ", "")
                 if pre == "AT":
                     print "DEVICE RESET, RESTART HANDSHAKE"
+                    self.port.write("AT") #resets the device to handshake mode if not already in it
                     self.handshake(self.port)
                 elif pre == "AR":
                     if rest == "U":
@@ -119,6 +122,7 @@ class RfidReader:
                 rest = rest.replace(" ", "")
                 if pre == "AT":
                     print "RECEIVE AT, DEVICE RESET, RESTART HANDSHAKE"
+                    self.port.write("AT") #resets the device to handshake mode if not already in it
                     self.handshake(self.port)
                 elif pre == "AR":
                     if rest == "X":
