@@ -1,5 +1,10 @@
 import serial, time
 
+TAG_TYPE_USER = 0
+TAG_TYPE_DRINK = 1
+TAG_TYPE_NONE = -1
+TAG_TYPE_ADMIN = 2
+
 class RfidReader:
 
     port = None
@@ -45,6 +50,7 @@ class RfidReader:
                     devRdy = True
                 else:
                     print "DID NOT RECV AT, DEVICE UNREADY, RESTART HANDSHAKE"
+                    self.port.write("AT") #resets the device to handshake mode if not already in it
                     self.handshake(port)
                 time.sleep(0.1)
 
@@ -56,7 +62,7 @@ class RfidReader:
         if self.port.in_waiting >= 4:
             #a new serial message has come through
             pre = self.port.read(2) #read the preamble
-            rest =  self.port.readline() + '\n' #read the rest of the message
+            rest =  self.port.readline() #read the rest of the message
             if pre == "AW": #if the preamble is a tag read
                 rest = rest.replace("\r","") #remove whitespace chars
                 rest = rest.replace("\n","")
@@ -64,6 +70,7 @@ class RfidReader:
                 return rest #rest contains tag UID string, minus any terminating chars
             elif pre == "AT":
                 print "DEVICE RESET, RESTART HANDSHAKE"
+                self.port.write("AT") #resets the device to handshake mode if not already in it
                 self.handshake(self.port)
             else:
                 #something other than a tag preamble was received. Ignore it
@@ -71,3 +78,76 @@ class RfidReader:
                 return ""
         else:
             return ""
+
+    def enterUpdateMode(self):
+        self.port.write("ARU")
+        time.sleep(0.1)
+        devRdy = False
+        while not devRdy:
+            if self.port.in_waiting >= 2:
+                pre = self.port.read(2)  # read the preamble
+                rest = self.port.readline()  # read the rest of the message
+
+                rest = rest.replace("\r","") #remove whitespace chars
+                rest = rest.replace("\n","")
+                rest = rest.replace(" ", "")
+                if pre == "AT":
+                    print "DEVICE RESET, RESTART HANDSHAKE"
+                    self.port.write("AT") #resets the device to handshake mode if not already in it
+                    self.handshake(self.port)
+                elif pre == "AR":
+                    if rest == "U":
+                        print "DEVICE IN UPDATE MODE, RCV ACK"
+                        devRdy = True
+                    else:
+                        print "DEVICE WRONG MODE, RESEND COMMAND"
+                else:
+                  #something other than a tag preamble was received. Ignore it
+                  pass
+            self.port.write("ARU") #retry
+            time.sleep(0.2)
+
+
+    def leaveUpdateMode(self):
+        self.port.write("ARX")
+        time.sleep(0.1)
+        devRdy = False
+        while not devRdy:
+            if self.port.in_waiting >= 2:
+                pre = self.port.read(2)  # read the preamble
+                rest = self.port.readline()  # read the rest of the message
+
+                rest = rest.replace("\r", "")  # remove whitespace chars
+                rest = rest.replace("\n", "")
+                rest = rest.replace(" ", "")
+                if pre == "AT":
+                    print "RECEIVE AT, DEVICE RESET, RESTART HANDSHAKE"
+                    self.port.write("AT") #resets the device to handshake mode if not already in it
+                    self.handshake(self.port)
+                elif pre == "AR":
+                    if rest == "X":
+                        print "DEVICE IN READ TAG MODE, RCV ACK"
+                        devRdy = True
+                    else:
+                        print "DEVICE WRONG MODE, RESEND COMMAND"
+                else:
+                    # something other than a tag preamble was received. Ignore it
+                    pass
+            self.port.write("ARX")  # retry
+            time.sleep(0.2)
+
+
+    def waitForTagRead(self, delay=0.3, timeout=1000):
+        read = ''
+        count = 0
+        while (not read) and (count <= timeout):
+            read = self.tagRead()
+            time.sleep(delay)
+            count += 1
+
+        return read
+
+    def disconnect(self):
+        self.port.write("AT")
+        self.port.close()
+
