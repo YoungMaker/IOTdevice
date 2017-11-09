@@ -20,12 +20,12 @@ char recvCode[3];
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
-  pinMode(LED, OUTPUT);
-  digitalWrite(LED, LOW);
-  nfc.begin();
-  handshake();
-  digitalWrite(LED, HIGH);
+ Serial.begin(9600);
+ pinMode(LED, OUTPUT);
+ digitalWrite(LED, LOW);
+ nfc.begin();
+ handshake();
+ digitalWrite(LED, HIGH);
 }
 
 void loop() {
