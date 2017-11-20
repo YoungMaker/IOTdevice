@@ -4,6 +4,7 @@ TAG_TYPE_USER = 0
 TAG_TYPE_DRINK = 1
 TAG_TYPE_NONE = -1
 TAG_TYPE_ADMIN = 2
+TAG_TYPE_CMPL = -2
 
 class RfidReader:
 

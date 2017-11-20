@@ -5,9 +5,11 @@
 #include <NfcAdapter.h>
 
 #define LED 8
+#define LEDR 9
 #define MODE_HANDSHAKE 0
 #define MODE_READ 1
 #define MODE_UPDATE 2
+#define FIN 6
 
 
 PN532_SPI pn532spi(SPI, 10);
@@ -22,6 +24,8 @@ void setup() {
   // put your setup code here, to run once:
  Serial.begin(9600);
  pinMode(LED, OUTPUT);
+ pinMode(LEDR, OUTPUT);
+ pinMode(FIN, INPUT);
  digitalWrite(LED, LOW);
  nfc.begin();
  handshake();
@@ -64,6 +68,7 @@ void loop() {
 
   if (mode == MODE_READ) { //constantly sends new tag scans to server
     digitalWrite(LED, HIGH);
+    digitalWrite(LEDR, LOW);
     if (nfc.tagPresent()) {
       NfcTag tag = nfc.read();
       UID = tag.getUidString();
@@ -75,9 +80,16 @@ void loop() {
         digitalWrite(LED, LOW);
       }
     }
+
+    if(digitalRead(FIN) == LOW) { //if complete button was pushed (TEMPORARY - WILL BE WEIGHT BASED)
+      Serial.println("AW00 00 00 00"); // prints empty tag, so that the companion program will read as "tag complete"
+      digitalWrite(LEDR, HIGH);
+    }
   }
+  
   if (mode == MODE_UPDATE) { //sends only the first scan to the server, until update mode is exited.
     digitalWrite(LED, LOW);
+    digitalWrite(LEDR, HIGH);
     if (nfc.tagPresent()) {
       NfcTag tag = nfc.read();
       UID = tag.getUidString();

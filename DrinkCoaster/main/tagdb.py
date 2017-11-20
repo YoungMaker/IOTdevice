@@ -16,6 +16,8 @@ class TagDatabase:
 
 
     def getTagType(self, tagId):
+        if tagId == '00000000':
+            return RfidReader.TAG_TYPE_CMPL
         global db
         cursor = db.cursor()
         cursor = cursor.execute("SELECT type FROM tags WHERE tag=?", (tagId,))
@@ -32,7 +34,7 @@ class TagDatabase:
             user = cursor.fetchone()
             if not (user is None):
                 #print user
-                print "Name: " + (user[0]) + ", Dob: " + user[1].replace("\\\\", "\\") + ", Weight: " + str(user[2]) + " Kg, " + "Has consumed: " + str(user[3]) + " ml\n"
+                print "Name: " + (user[0]) + ", Dob: " + user[1].replace("\\\\", "\\") + ", Weight: " + str(user[2]) + " Kg, \n" #+ "Has consumed: " + str(user[3]) + " ml\n"
             else:
                 print "Query returned empty list\n"
                 return DB_ERROR
@@ -45,6 +47,41 @@ class TagDatabase:
 
         return DB_COMPLETE
 
+    def getUserName(self, tagId):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor = cursor.execute("SELECT name, dob, weight, dose FROM users WHERE tag=?", (tagId,))
+            user = cursor.fetchone()
+            if not (user is None):
+                return user[0]
+            else:
+                print "Query returned empty list\n"
+                return DB_ERROR
+        except sqlite3.IntegrityError:
+            print "Database Integrity error"
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            print "Database error: " +  str(e) + "\n"
+            return DB_ERROR
+
+    def getDrinkName(self, tagId):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor = cursor.execute("SELECT name, drug, qty, dose FROM drinks WHERE tag=?", (tagId,))
+            drink = cursor.fetchone()
+            if not (drink is None):
+                return drink[0]
+            else:
+                print "Query returned empty list\n"
+                return DB_ERROR
+        except sqlite3.IntegrityError:
+            print "Database Integrity error"
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            print "Database error: " +  str(e) + "\n"
+            return DB_ERROR
 
     def printDrinkInfo(self, tagId): # only execute this with a drink tag
         global db
@@ -67,23 +104,26 @@ class TagDatabase:
 
         return DB_COMPLETE
 
-    def insertIntoTagsTable(self, tagId, type): #DO Not use, rollbacks do not work if subsequent query fails
+
+    def consumeDrink(self, tagId_user, tagId_drink):
         global db
         cursor = db.cursor()
-        try: #note that a tag MUST be inserted into the tags table before the drinks table
-            cursor.execute("INSERT INTO tags (tag, type) VALUES(?,?)", (tagId, RfidReader.TAG_TYPE_DRINK))
+        try:
+            cursor.execute("INSERT INTO drank (user,drink) VALUES (?,?)", (tagId_user, tagId_drink))
+
             db.commit()
-        except sqlite3.IntegrityError:
-            print "Exact tag is already in database\n"
+        except sqlite3.IntegrityError as e:
+            print "Integrity error: " + str(e) + "\n"
             db.rollback()
             return DB_ERROR
         except sqlite3.DatabaseError as e:
             # Roll back any change if something goes wrong
-            print "Database error: " +  str(e) + "\n"
+            print "Database error: " + str(e) + "\n"
             db.rollback()
             return DB_ERROR
 
         return DB_COMPLETE
+
 
     def removeUser(self, tagId):
         global db
@@ -198,3 +238,23 @@ class TagDatabase:
         if db is not None:
             print "Database closed\n"
             db.close()
+
+    '''
+        def insertIntoTagsTable(self, tagId, type): #DO Not use, rollbacks do not work if subsequent query fails
+            global db
+            cursor = db.cursor()
+            try: #note that a tag MUST be inserted into the tags table before the drinks table
+                cursor.execute("INSERT INTO tags (tag, type) VALUES(?,?)", (tagId, RfidReader.TAG_TYPE_DRINK))
+                db.commit()
+            except sqlite3.IntegrityError:
+                print "Exact tag is already in database\n"
+                db.rollback()
+                return DB_ERROR
+            except sqlite3.DatabaseError as e:
+                # Roll back any change if something goes wrong
+                print "Database error: " +  str(e) + "\n"
+                db.rollback()
+                return DB_ERROR
+
+            return DB_COMPLETE
+    '''
