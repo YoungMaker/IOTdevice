@@ -34,7 +34,7 @@ class TagDatabase:
             user = cursor.fetchone()
             if not (user is None):
                 #print user
-                print "Name: " + (user[0]) + ", Dob: " + user[1].replace("\\\\", "\\") + ", Weight: " + str(user[2]) + " Kg, \n" #+ "Has consumed: " + str(user[3]) + " ml\n"
+                print "Name: " + (user[0]) + ", Dob: " + user[1].replace("\\\\", "\\") + ", Weight: " + str(user[2]) + " Kg" #+ "Has consumed: " + str(user[3]) + " ml\n"
             else:
                 print "Query returned empty list\n"
                 return DB_ERROR
@@ -46,6 +46,31 @@ class TagDatabase:
             return DB_ERROR
 
         return DB_COMPLETE
+
+    def printDrinksConsumed(self, tagId_user):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor.execute("SELECT drink FROM drank WHERE user=?", (tagId_user,))
+            consumed = cursor.fetchall()
+            if not consumed:
+                print "user "  + self.getUserName(tagId_user) + " has not consumed any drinks "
+                return DB_COMPLETE
+
+            print "user " + self.getUserName(tagId_user) + " has consumed: "
+            for drink in consumed:
+                #print "         "
+                self.printDrinkInfo(drink[0])
+        except sqlite3.IntegrityError:
+            print "Database Integrity error"
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            print "Database error: " + str(e) + "\n"
+            return DB_ERROR
+
+        return DB_COMPLETE
+
+
 
     def getUserName(self, tagId):
         global db
@@ -91,7 +116,7 @@ class TagDatabase:
             drink = cursor.fetchone()
             if not (drink is None):
                 #print user
-                print "Drink " + str(drink[2]) + "ml \"" + drink[0] + "\" containing " + str(drink[3]) + "mg/ml of \"" + drink[1] + "\" \n"
+                print "Drink " + str(drink[2]) + "ml \"" + drink[0] + "\" containing " + str(drink[3]) + "mg/ml of \"" + drink[1] + "\" "
             else:
                 print "Query returned empty list\n"
                 return DB_ERROR

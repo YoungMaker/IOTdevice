@@ -17,6 +17,7 @@ def readMode(reader, db):
         tagType = db.getTagType(read)
         if tagType ==  RfidReader.TAG_TYPE_USER:
             db.printUserInfo(read)
+            db.printDrinksConsumed(read)
             print db.getUserName(read) + " is now the current user, entering drink mode \n"
             return read
         if tagType == RfidReader.TAG_TYPE_ADMIN:
@@ -52,13 +53,14 @@ def drinkMode(reader, db, user):
         if tagType ==  RfidReader.TAG_TYPE_USER:
             db.printUserInfo(read)
             print db.getUserName(read) + " is now the current drinker"
+            db.printDrinksConsumed(read)
             user = read #set the current drinker
         if tagType == RfidReader.TAG_TYPE_ADMIN:
             db.printUserInfo(read)
             print "Admin card accepted\n"
             databaseUpdater.updateMode(db, reader)
         if tagType == RfidReader.TAG_TYPE_DRINK:
-            db.printDrinkInfo(read)
+            #db.printDrinkInfo(read)
             drink = read
             print db.getUserName(user) + " is currently drinking " + db.getDrinkName(drink)
         if tagType == RfidReader.TAG_TYPE_NONE:
