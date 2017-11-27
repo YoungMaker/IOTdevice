@@ -1,4 +1,6 @@
 import serial, time
+import sys
+import glob
 
 TAG_TYPE_USER = 0
 TAG_TYPE_DRINK = 1
@@ -10,16 +12,21 @@ class RfidReader:
 
     port = None
 
-    def __init__(self, COM, dataRate=9600):
+    def __init__(self, COM="COMNULL", dataRate=9600):
         #todo, open serial port, handshake with client.
+        self.connected = False
+        if COM != "COMNULL" :
+            self.connect(COM, dataRate)
 
+    def connect(self, COM, dataRate=9600):
         self.port = serial.Serial(COM, dataRate)
         self.handshake(self.port)
-        
+        self.connected = True
 
     def handshake(self, port):
         servRdy = False
         devRdy = False
+        self.connected = False
         print "SERV NOT READY, WAITING FOR AT"
         # waits for input on serial port such that input is AT
         while not servRdy:
@@ -57,6 +64,7 @@ class RfidReader:
 
         time.sleep(.5)
         self.port.reset_input_buffer()
+        self.connected = True
 		
         
     def tagRead(self):
@@ -148,7 +156,40 @@ class RfidReader:
 
         return read
 
+
+    def listSerialPorts(self):
+        """ Lists serial port names
+
+            :raises EnvironmentError:
+                On unsupported or unknown platforms
+            :returns:
+                A list of the serial ports available on the system
+        """
+        if sys.platform.startswith('win'):
+            ports = ['COM%s' % (i + 1) for i in range(256)]
+        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+            # this excludes your current terminal "/dev/tty"
+            ports = glob.glob('/dev/tty[A-Za-z]*')
+        elif sys.platform.startswith('darwin'):
+            ports = glob.glob('/dev/tty.*')
+        else:
+            raise EnvironmentError('Unsupported platform')
+
+        result = []
+        for port in ports:
+            try:
+                s = serial.Serial(port)
+                s.close()
+                result.append(str(port))
+            except (OSError, serial.SerialException):
+                pass
+        return result
+
+    def isConnected(self):
+        return self.connected
+
     def disconnect(self):
-        self.port.write("AT")
-        self.port.close()
+        if self.connected:
+            self.port.write("AT")
+            self.port.close()
 

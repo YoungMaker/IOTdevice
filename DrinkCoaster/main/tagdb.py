@@ -283,6 +283,9 @@ class TagDatabase:
             print "Database closed\n"
             db.close()
 
+    def isConnected(self):
+        global db
+
     '''
         def insertIntoTagsTable(self, tagId, type): #DO Not use, rollbacks do not work if subsequent query fails
             global db
