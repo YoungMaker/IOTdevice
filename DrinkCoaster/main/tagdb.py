@@ -128,6 +128,43 @@ class TagDatabase:
 
         return DB_COMPLETE
 
+    def getDrinkInfo(self, tagId): # only execute this with a drink tag
+        global db
+        cursor = db.cursor()
+        try:
+            cursor = cursor.execute("SELECT name, drug, qty, dose FROM drinks WHERE tag=?", (tagId,))
+            drink = cursor.fetchone()
+            if not (drink is None):
+                return drink
+            else:
+                print "Query returned empty list\n"
+                return None
+        except sqlite3.IntegrityError:
+            print "Database Integrity error"
+            return None
+        except sqlite3.DatabaseError as e:
+            print "Database error: " +  str(e) + "\n"
+            return None
+
+    def getUserInfo(self, tagId):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor = cursor.execute("SELECT name, dob, weight, dose FROM users WHERE tag=?", (tagId,))
+            user = cursor.fetchone()
+            if not (user is None):
+                return user
+            else:
+                print "Query returned empty list\n"
+                return None
+        except sqlite3.IntegrityError:
+            print "Database Integrity error"
+            return None
+        except sqlite3.DatabaseError as e:
+            print "Database error: " +  str(e) + "\n"
+            return None
+
+
 
     def consumeDrink(self, tagId_user, tagId_drink):
         global db

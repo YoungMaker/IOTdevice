@@ -157,7 +157,7 @@ class RfidReader:
         return read
 
 
-    def listSerialPorts(self):
+    def listSerialPorts(self): #copied from https://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python
         """ Lists serial port names
 
             :raises EnvironmentError:
