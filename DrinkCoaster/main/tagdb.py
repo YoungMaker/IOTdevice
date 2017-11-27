@@ -71,7 +71,6 @@ class TagDatabase:
         return DB_COMPLETE
 
 
-
     def getUserName(self, tagId):
         global db
         cursor = db.cursor()
@@ -149,6 +148,25 @@ class TagDatabase:
 
         return DB_COMPLETE
 
+    def removeConsumedDrink(self, tagId_user, tagId_drink):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor.execute("DELETE FROM drank WHERE user = ? AND drink = ?", (tagId_user, tagId_drink))
+
+            db.commit()
+        except sqlite3.IntegrityError as e:
+            print "Integrity error: " + str(e) + "\n"
+            db.rollback()
+            return DB_ERROR
+        except sqlite3.DatabaseError as e:
+            # Roll back any change if something goes wrong
+            print "Database error: " + str(e) + "\n"
+            db.rollback()
+            return DB_ERROR
+
+        return DB_COMPLETE
+
 
     def removeUser(self, tagId):
         global db
@@ -156,6 +174,7 @@ class TagDatabase:
         try:
             cursor.execute("DELETE FROM users WHERE tag = ?", (tagId,))
             cursor.execute("DELETE FROM tags WHERE tag = ?", (tagId,))
+            cursor.execute("DELETE FROM drank WHERE user = ?", (tagId,))
             db.commit()
         except sqlite3.IntegrityError as e:
             print "Database Integrity error: " + str(e) +"\n"
