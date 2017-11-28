@@ -37,10 +37,20 @@ class mainFrame(Frame):
         self.config(bg="white")
         self.direction = Label(self, text="Click to connect to RFID device", background="white")
         self.direction.pack()
+
         self.mainImage = PhotoImage(file="res/Moretti.gif")
+        self.offConnImage = PhotoImage(file="res/connect_light_off.gif").subsample(2,2)
+        self.onConnImage = PhotoImage(file="res/connect_light_on.gif").subsample(2,2)
+
+        self.connectLight = Label(self, image=self.offConnImage)
+        self.connectLight.pack(side = TOP)
+
         self.mainButton = Label(self, image=self.mainImage)
         self.mainButton.bind("<Button-1>", self.mainClickHandler)
         self.mainButton.pack()
+
+
+
         comports = ""
         for comport in rfidReader.listSerialPorts():
             comports += comport + " "
@@ -62,9 +72,15 @@ class mainFrame(Frame):
     def setConnected(self):
         self.comList.pack_forget()
         self.direction.config(text="Now waiting for tag read")
+        self.connectLight.config(image=self.onConnImage)
+
+    def setLightOn(self):
+        self.connectLight.config(image=self.onConnImage)
 
     def tagRead(self, read):
         self.direction.config(text="last read tag : " + read)
+        self.connectLight.config(image=self.offConnImage)
+        self.after(300, self.setLightOn)
 
 class sideFrame(Frame):
 
@@ -74,10 +90,10 @@ class sideFrame(Frame):
         self.pack_propagate(0)
         self.label = Label(self)
         self.label.pack(side = TOP)
-        self.table = SimpleTable(self, rows=4, columns=2)
-        self.table.pack(side = BOTTOM)
         self.edit = Button(self, text="edit", state=DISABLED)
         self.edit.pack(side = BOTTOM)
+        self.table = SimpleTable(self, rows=4, columns=2)
+        self.table.pack(side = BOTTOM)
         self.grid(row= 0, column=1)
 
     def setSidePanelDrink(self, drinkDbObject):
