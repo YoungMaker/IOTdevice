@@ -11,17 +11,18 @@ UPDATE_MODE = 2
 
 
 def pollReader():
-    read = rfidReader.waitForTagRead(delay=0.001, timeout=10)
-    if read:
-        mf.tagRead(read)
-        tagType = db.getTagType(read)
-        if tagType == RfidReader.TAG_TYPE_DRINK:
-            sf.setSidePanelDrink(read, db.getDrinkInfo(read))
-        elif tagType == RfidReader.TAG_TYPE_USER:
-            sf.setSidePanelUser(read, db.getUserInfo(read))
-        elif tagType == RfidReader.TAG_TYPE_ADMIN:
-            #sf.setSidePanelUser(db.getUserInfo(read), True)
-            enterUpdateMode()
+    if not state == UPDATE_MODE:
+        read = rfidReader.waitForTagRead(delay=0.001, timeout=10)
+        if read:
+            mf.tagRead(read)
+            tagType = db.getTagType(read)
+            if tagType == RfidReader.TAG_TYPE_DRINK:
+                sf.setSidePanelDrink(read, db.getDrinkInfo(read))
+            elif tagType == RfidReader.TAG_TYPE_USER:
+                sf.setSidePanelUser(read, db.getUserInfo(read))
+            elif tagType == RfidReader.TAG_TYPE_ADMIN:
+                #sf.setSidePanelUser(db.getUserInfo(read), True)
+                enterUpdateMode()
 
     mf.after(100, pollReader) #re-poll the rfid reader in 100 milliseconds
 
@@ -35,16 +36,16 @@ def connect(COMPORT):
 def enterUpdateMode():
     global state
     if tkMessageBox.askquestion(title="admin mode", message="Would you like to enter admin mode?"):
-        sf.enterAdminMode()
         mf.setMainText("Scan Tag to Update Database")
+        sf.clearEntry()
         state = UPDATE_MODE
         updateMode()
 
 def exitUpdateMode():
     global state
     state = READ_MODE
-    sf.exitAdminMode()
     mf.setMainText("Now waiting for tag read")
+    rfidReader.leaveUpdateMode()
 
 def updateMode():
     global read
@@ -54,11 +55,17 @@ def updateMode():
         tagType = db.getTagType(read)
         if tagType == RfidReader.TAG_TYPE_DRINK:
             sf.setSidePanelDrink(read, db.getDrinkInfo(read))
+            sf.enterAdminMode()
+            rfidReader.enterUpdateMode()
         elif tagType == RfidReader.TAG_TYPE_USER:
             sf.setSidePanelUser(read, db.getUserInfo(read))
+            sf.enterAdminMode()
+            rfidReader.enterUpdateMode()
         elif tagType == RfidReader.TAG_TYPE_ADMIN:
             #sf.setSidePanelUser(db.getUserInfo(read))
-            exitUpdateMode()
+            sf.exitAdminMode()
+        elif tagType == RfidReader.TAG_TYPE_NONE:
+            mf.after(100, updateMode)
     else:
         mf.after(100, updateMode)  # re-poll the rfid reader in 100 milliseconds
 
@@ -144,13 +151,12 @@ class sideFrame(Frame):
         self.table = SimpleTable(self, rows=4, columns=2)
         self.table.pack(side = BOTTOM)
         self.grid(row= 0, column=1)
-        self.editTable = SimpleTable(self, rows=4, columns=2, editable=True)
         self.tag = ""
 
     def setSidePanelDrink(self, tagId, drinkDbObject):
         self.tag = tagId
         self.table.clear()
-        self.label.config(text = drinkDbObject[0])
+        self.label.config(text = "Last tag scanned: \n" + drinkDbObject[0])
         self.table.set(0,0, "Name:")
         self.table.set(0, 1, drinkDbObject[0])
         self.table.set(1,0, "Qty:")
@@ -160,20 +166,11 @@ class sideFrame(Frame):
         self.table.set(3,0, "Dose:")
         self.table.set(3, 1, str(drinkDbObject[3]) + "mg/ml")
 
-        self.editTable.set(0,0, "Name:")
-        self.editTable.set(0, 1, drinkDbObject[0])
-        self.editTable.set(1,0, "Qty:")
-        self.editTable.set(1, 1, str(drinkDbObject[2]) + "ml")
-        self.editTable.set(2,0, "Drug:")
-        self.editTable.set(2, 1, drinkDbObject[1])
-        self.editTable.set(3,0, "Dose:")
-        self.editTable.set(3, 1, str(drinkDbObject[3]) + "mg/ml")
-
 
     def setSidePanelUser(self, tagId, userDbObject, isAdmin= False):
         self.tag = tagId
         self.table.clear()
-        self.label.config(text = userDbObject[0])
+        self.label.config(text = "Last tag scanned: \n" + userDbObject[0])
         self.table.set(0,0, "Name:")
         self.table.set(0, 1, userDbObject[0])
         self.table.set(1,0, "DOB")
@@ -189,32 +186,26 @@ class sideFrame(Frame):
         self.table.set(2,0, "Weight")
         self.table.set(2, 1, str(userDbObject[2]))
         self.table.set(3,0, "----")
+
+    def clearEntry(self):
+        self.tag = ""
+        self.table.clear()
+        self.label.config(text = "")
 
     def enterAdminMode(self):
         self.edit.config(state=ACTIVE)
-        self.table.pack_forget()
-        self.editTable.pack(side= BOTTOM)
 
     def exitAdminMode(self):
-        self.table.pack(side=BOTTOM)
-        self.editTable.pack_forget()
+        self.edit.config(state = DISABLED)
+        self.clearEntry()
+        exitUpdateMode()
 
     def updateTag(self):
-        if self.tag:
-            tagType = db.getTagType(self.tag)
-            if tagType == RfidReader.TAG_TYPE_DRINK:
-                self.updateTagDrink(self.tag)
-            elif tagType == RfidReader.TAG_TYPE_USER:
-                self.updateTagUser()
-
-    def updateTagDrink(self, tag):
-        print self.editTable.get(0,1)
-
-    def updateTagUser(self):
-        pass
+        EditWindow(self.tag)
+        self.edit.config(state = DISABLED)
 
 class SimpleTable(Frame): #copied from https://stackoverflow.com/questions/11047803/creating-a-table-look-a-like-tkinter to save time
-    def __init__(self, parent, rows=10, columns=2, editable=False):
+    def __init__(self, parent, rows=10, columns=2):
         # use black background so it "peeks through" to
         # form grid lines
         self.rows = rows
@@ -224,14 +215,9 @@ class SimpleTable(Frame): #copied from https://stackoverflow.com/questions/11047
         for row in range(rows):
             current_row = []
             for column in range(columns):
-                if not editable:
-                    label = Label(self, borderwidth=0, width=30)
-                    label.grid(row=row, column=column, sticky="nsew", padx=1, pady=1)
-                    current_row.append(label)
-                else:
-                    edit = Entry(self, width=30, text="test")
-                    edit.grid(row=row, column=column, padx=1, pady=1)
-                    current_row.append(edit)
+                label = Label(self, borderwidth=0, width=30)
+                label.grid(row=row, column=column, sticky="nsew", padx=1, pady=1)
+                current_row.append(label)
             self._widgets.append(current_row)
 
 
@@ -244,8 +230,8 @@ class SimpleTable(Frame): #copied from https://stackoverflow.com/questions/11047
         widget.configure(text=value)
 
     def get(self, row, column):
-        widget = self._widgets[row][column]
-        widget.get()
+        entry = self._widgets[row][column]
+        entry.get()
 
     def clear(self):
         for row in range(self.rows):
@@ -254,9 +240,63 @@ class SimpleTable(Frame): #copied from https://stackoverflow.com/questions/11047
                 widget.configure(text="")
 
 
+class EditWindow:
+
+    def __init__(self, tag):
+        self.tag = tag
+        self.window = Toplevel()
+        self.window.title = "Edit Pane"
+        self.window.protocol("WM_DELETE_WINDOW", self.exitEditWindow)
+
+        self.frame = Frame(self.window)
+
+
+        self.labels = []
+        for row in range(4):
+            label = Label(self.frame)
+            label.grid(row=row, column=0, sticky="nsew", padx=1, pady=1)
+            self.labels.append(label)
+
+        self.entries = []
+        for row in range(4):
+            entry = Entry(self.frame, width=50)
+            entry.grid(row=row, column=1, sticky="nsew", padx=1, pady=1)
+            self.entries.append(entry)
+
+        self.frame.pack()
+        self.save = Button(self.window, text="Save", command=self.saveData)
+        self.save.pack()
+
+        tagType = db.getTagType(tag)
+        if tagType == RfidReader.TAG_TYPE_DRINK:
+            self.populateWithDrink(tag)
+        elif tagType == RfidReader.TAG_TYPE_USER:
+            self.populateWithUser(tag)
+
+
+    def exitEditWindow(self):
+        sf.exitAdminMode()
+        self.window.destroy()
+
+    def populateWithDrink(self, tag):
+        self.labels[0].config(text = "Name:")
+        self.labels[1].config(text= "Qty:")
+        self.labels[2].config(text = "Drug:")
+        self.labels[3].config(text = "Dose:")
+
+    def populateWithUser(self, tag):
+        self.labels[0].config(text = "Name:")
+        self.labels[1].config(text= "Dob:")
+        self.labels[2].config(text = "Weight")
+        self.labels[3].config(text = "---")
+
+    def saveData(self):
+        pass
+
+
 if __name__ == '__main__':
     global state, rfidReader, db, mf
-    #todo: Open serial port & handshake, open gui window and begin running gui thread
+    #Open serial port & handshake, connect db, open gui window, and begin running gui thread
     rfidReader = RfidReader.RfidReader()
     db = TagDatabase()
     root = Tk()
