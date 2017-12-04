@@ -70,6 +70,19 @@ class TagDatabase:
 
         return DB_COMPLETE
 
+    def getDrinksConsumed(self, tagId_user):
+        global db
+        cursor = db.cursor()
+        try:
+            cursor.execute("SELECT drink FROM drank WHERE user=?", (tagId_user,))
+            consumed = cursor.fetchall()
+            return consumed
+        except sqlite3.IntegrityError:
+            print "Database Integrity error"
+            return None
+        except sqlite3.DatabaseError as e:
+            print "Database error: " + str(e) + "\n"
+            return None
 
     def getUserName(self, tagId):
         global db

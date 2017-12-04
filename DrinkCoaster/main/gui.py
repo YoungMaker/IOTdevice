@@ -11,20 +11,25 @@ UPDATE_MODE = 2
 
 
 def pollReader():
-    if not state == UPDATE_MODE:
+    global user, state
+    if state == READ_MODE:
         read = rfidReader.waitForTagRead(delay=0.001, timeout=10)
         if read:
             mf.tagRead(read)
             tagType = db.getTagType(read)
             if tagType == RfidReader.TAG_TYPE_DRINK:
                 sf.setSidePanelDrink(read, db.getDrinkInfo(read))
+                drink = read
+                #user = ""
             elif tagType == RfidReader.TAG_TYPE_USER:
                 sf.setSidePanelUser(read, db.getUserInfo(read))
+                user = read
+                drink = ""
             elif tagType == RfidReader.TAG_TYPE_ADMIN:
                 #sf.setSidePanelUser(db.getUserInfo(read), True)
+                user = ""
                 enterUpdateMode()
-
-    mf.after(100, pollReader) #re-poll the rfid reader in 100 milliseconds
+        mf.after(100, pollReader) #re-poll the rfid reader in 100 milliseconds
 
 def connect(COMPORT):
     global rfidReader, state
@@ -35,7 +40,7 @@ def connect(COMPORT):
 
 def enterUpdateMode():
     global state
-    if tkMessageBox.askquestion(title="admin mode", message="Would you like to enter admin mode?"):
+    if tkMessageBox.askquestion(title="admin mode", message="Would you like to enter admin mode?")  == 'yes':
         mf.setMainText("Scan Tag to Update Database")
         sf.clearEntry()
         state = UPDATE_MODE
@@ -69,7 +74,47 @@ def updateMode():
     else:
         mf.after(100, updateMode)  # re-poll the rfid reader in 100 milliseconds
 
+def drinkMode():
+    global state
+    if user:
+        if tkMessageBox.askquestion(title="drink mode", message="Would you like to enter drink mode?") == 'yes':
+            state = DRINK_MODE
+            mf.setMainText("Now consuming with " + db.getUserName(user))
+            mf.after(200, updateDrinkMode)
 
+def updateDrinkMode():
+    global user, state
+    if state == DRINK_MODE:
+        read = rfidReader.waitForTagRead(delay=0.001, timeout=10)
+        if read:
+            mf.tagRead(read)
+            tagType = db.getTagType(read)
+            if tagType == RfidReader.TAG_TYPE_DRINK:
+                sf.setSidePanelDrink(read, db.getDrinkInfo(read))
+                drink = read
+                #user = ""
+            elif tagType == RfidReader.TAG_TYPE_USER:
+                sf.setSidePanelUser(read, db.getUserInfo(read))
+                user = read
+                mf.setMainText("Now consuming with " + db.getUserName(user))
+                drink = ""
+            elif tagType == RfidReader.TAG_TYPE_ADMIN:
+                pass
+            elif tagType == RfidReader.TAG_TYPE_CMPL:
+                #todo: consume a drink
+                pass
+
+        mf.after(100, updateDrinkMode) #re-poll the rfid reader in 100 milliseconds
+
+
+def leaveDrinkMode():
+    global state, user
+    if tkMessageBox.askquestion(title="drink mode", message="Would you like to leave drink mode?") == 'yes':
+        mf.after(200, pollReader)
+        state = READ_MODE
+        sf.clearEntry()
+        user = ""
+        mf.setMainText("Waiting for Tag Read " )
 
 class mainFrame(Frame):
 
@@ -91,8 +136,6 @@ class mainFrame(Frame):
         self.mainButton.bind("<Button-1>", self.mainClickHandler)
         self.mainButton.pack()
 
-
-
         comports = ""
         for comport in rfidReader.listSerialPorts():
             comports += comport + " "
@@ -104,6 +147,7 @@ class mainFrame(Frame):
         self.grid(row=0, column=0)
 
     def mainClickHandler(self, event=None):
+        global state
         if not rfidReader.isConnected():
             if self.comList.get():
                 resp = tkMessageBox.askquestion(self.parent, message="Connect with Serial port " + self.comList.get())
@@ -111,6 +155,11 @@ class mainFrame(Frame):
                     connect(self.comList.get())
             else:
                 tkMessageBox.showerror(message="Error No Serial Port selected")
+        elif state == READ_MODE:
+            drinkMode()
+        elif state == DRINK_MODE:
+            leaveDrinkMode()
+
 
     def dropClickHandler(self, event=None):
         if not rfidReader.isConnected():
@@ -152,11 +201,16 @@ class sideFrame(Frame):
         self.table.pack(side = BOTTOM)
         self.grid(row= 0, column=1)
         self.tag = ""
+        self.text = Text(self, width=44, height=5, state=DISABLED)
+        self.textlabel = Label(self, text="Drinks Consumed:")
 
     def setSidePanelDrink(self, tagId, drinkDbObject):
         self.tag = tagId
         self.table.clear()
-        self.label.config(text = "Last tag scanned: \n" + drinkDbObject[0])
+        if state == DRINK_MODE:
+            self.label.config(text="Current Consuming User is \n" + db.getUserName(user) + " \n consuming "  +drinkDbObject[0]  )
+        else:
+            self.label.config(text = "Last tag scanned: \n" + drinkDbObject[0])
         self.table.set(0,0, "Name:")
         self.table.set(0, 1, drinkDbObject[0])
         self.table.set(1,0, "Qty:")
@@ -165,18 +219,24 @@ class sideFrame(Frame):
         self.table.set(2, 1, drinkDbObject[1])
         self.table.set(3,0, "Dose:")
         self.table.set(3, 1, str(drinkDbObject[3]) + "mg/ml")
-
+        self.text.pack_forget()
+        self.text.delete(1.0, END) #  clears widget
+        self.textlabel.pack_forget()
 
     def setSidePanelUser(self, tagId, userDbObject, isAdmin= False):
+        global state
         self.tag = tagId
         self.table.clear()
-        self.label.config(text = "Last tag scanned: \n" + userDbObject[0])
+        if state == DRINK_MODE:
+            self.label.config(text="Current Consuming User is \n" + userDbObject[0])
+        else:
+            self.label.config(text = "Last tag scanned: \n" + userDbObject[0])
         self.table.set(0,0, "Name:")
         self.table.set(0, 1, userDbObject[0])
         self.table.set(1,0, "DOB")
         self.table.set(1, 1, userDbObject[1])
         self.table.set(2,0, "Weight")
-        self.table.set(2, 1, str(userDbObject[2]))
+        self.table.set(2, 1, str(userDbObject[2]) + " Kg")
         self.table.set(3,0, "----")
 
         self.table.set(0,0, "Name:")
@@ -186,11 +246,24 @@ class sideFrame(Frame):
         self.table.set(2,0, "Weight")
         self.table.set(2, 1, str(userDbObject[2]))
         self.table.set(3,0, "----")
+
+        self.text.delete(1.0, END)
+        self.text.pack(side = BOTTOM)
+        self.text.config(state = NORMAL)
+
+        consumed = db.getDrinksConsumed(tagId)
+
+        for drink in consumed:
+            self.text.insert('end', db.getDrinkName(drink[0]) + "\n")
+
+        self.text.config(state = DISABLED)
+        self.textlabel.pack(side= BOTTOM)
 
     def clearEntry(self):
         self.tag = ""
         self.table.clear()
         self.label.config(text = "")
+        self.text.delete(1.0, END)
 
     def enterAdminMode(self):
         self.edit.config(state=ACTIVE)
@@ -249,6 +322,7 @@ class EditWindow:
         self.window.protocol("WM_DELETE_WINDOW", self.exitEditWindow)
 
         self.frame = Frame(self.window)
+        self.mode = RfidReader.TAG_TYPE_NONE
 
 
         self.labels = []
@@ -283,19 +357,24 @@ class EditWindow:
         self.labels[1].config(text= "Qty:")
         self.labels[2].config(text = "Drug:")
         self.labels[3].config(text = "Dose:")
+        self.mode = RfidReader.TAG_TYPE_DRINK
 
     def populateWithUser(self, tag):
         self.labels[0].config(text = "Name:")
         self.labels[1].config(text= "Dob:")
         self.labels[2].config(text = "Weight")
         self.labels[3].config(text = "---")
+        self.mode = RfidReader.TAG_TYPE_USER
 
     def saveData(self):
-        pass
+        if self.mode == RfidReader.TAG_TYPE_USER:
+            pass
+        elif self.mode == RfidReader.TAG_TYPE_DRINK:
+            pass
 
 
 if __name__ == '__main__':
-    global state, rfidReader, db, mf
+    global state, rfidReader, db, mf, user, drink
     #Open serial port & handshake, connect db, open gui window, and begin running gui thread
     rfidReader = RfidReader.RfidReader()
     db = TagDatabase()
@@ -307,5 +386,7 @@ if __name__ == '__main__':
 
     root.mainloop()
 
+    user = ""
+    drink = ""
     db.disconnect()
     rfidReader.disconnect()
