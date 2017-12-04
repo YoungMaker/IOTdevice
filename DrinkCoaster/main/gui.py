@@ -83,7 +83,7 @@ def drinkMode():
             mf.after(200, updateDrinkMode)
 
 def updateDrinkMode():
-    global user, state
+    global user, state, drink
     if state == DRINK_MODE:
         read = rfidReader.waitForTagRead(delay=0.001, timeout=10)
         if read:
@@ -101,8 +101,10 @@ def updateDrinkMode():
             elif tagType == RfidReader.TAG_TYPE_ADMIN:
                 pass
             elif tagType == RfidReader.TAG_TYPE_CMPL:
-                #todo: consume a drink
-                pass
+                if drink and user:
+                    db.consumeDrink(user, drink)
+                    drink = ""
+
 
         mf.after(100, updateDrinkMode) #re-poll the rfid reader in 100 milliseconds
 
@@ -220,7 +222,9 @@ class sideFrame(Frame):
         self.table.set(3,0, "Dose:")
         self.table.set(3, 1, str(drinkDbObject[3]) + "mg/ml")
         self.text.pack_forget()
+        self.text.config(state = NORMAL)
         self.text.delete(1.0, END) #  clears widget
+        self.text.config(state = DISABLED)
         self.textlabel.pack_forget()
 
     def setSidePanelUser(self, tagId, userDbObject, isAdmin= False):
@@ -231,6 +235,7 @@ class sideFrame(Frame):
             self.label.config(text="Current Consuming User is \n" + userDbObject[0])
         else:
             self.label.config(text = "Last tag scanned: \n" + userDbObject[0])
+
         self.table.set(0,0, "Name:")
         self.table.set(0, 1, userDbObject[0])
         self.table.set(1,0, "DOB")
@@ -247,14 +252,15 @@ class sideFrame(Frame):
         self.table.set(2, 1, str(userDbObject[2]))
         self.table.set(3,0, "----")
 
-        self.text.delete(1.0, END)
+
         self.text.pack(side = BOTTOM)
         self.text.config(state = NORMAL)
+        self.text.delete(1.0, END)
 
         consumed = db.getDrinksConsumed(tagId)
 
-        for drink in consumed:
-            self.text.insert('end', db.getDrinkName(drink[0]) + "\n")
+        for drinkOb in consumed:
+            self.text.insert('end', db.getDrinkName(drinkOb[0]) + "\n")
 
         self.text.config(state = DISABLED)
         self.textlabel.pack(side= BOTTOM)
@@ -263,7 +269,9 @@ class sideFrame(Frame):
         self.tag = ""
         self.table.clear()
         self.label.config(text = "")
+        self.text.config(state = NORMAL)
         self.text.delete(1.0, END)
+        self.text.config(state = DISABLED)
 
     def enterAdminMode(self):
         self.edit.config(state=ACTIVE)
